@@ -1,91 +1,104 @@
-# Import and initialize the pygame library
-import pygame
-pygame.init()
-
-# Set up the drawing window
-screen = pygame.display.set_mode([500, 500])
-
-# Pos variables
-x = 250
-y = 250
-
-# Variables for text
-font = pygame.font.SysFont("comicsansms", 35)
-score = 0
+#Define and display variables
 lives = 3
+score = 0
+earth_lives = 3
+score_board = codesters.Display(score, 200, 200)
+my_lives_board = codesters.Display(lives, -200,200)
+earth_lives_board = codesters.Display(earth_lives, -200,-200)
+# Add necesary sprites
+stage.set_background("space")
+earth = codesters.Sprite("earth")
+sprite = codesters.Sprite("spaceship")
+earth.set_size(0.4)
+sprite.set_size(0.5)
 
-player_img = pygame.image.load(r'ufo.png')
-class Player(pygame.sprite.Sprite):
+#Teleport function
+def teleport(x_pos, y_pos):
+    if x_pos > 270:
+        sprite.go_to(-260,y_pos)
+    if x_pos < -270:
+        sprite.go_to(260, y_pos)
+    if y_pos > 270:
+        sprite.go_to(x_pos,-260)
+    if y_pos < -270:
+        sprite.go_to(x_pos, 260)
+        
+#Move forward function
+def move_forward():
+    x_pos = sprite.get_x()
+    y_pos = sprite.get_y()
+    sprite.move_forward(25)
+    teleport(x_pos, y_pos)
+    
+#Move back function
+def move_back():
+    sprite.move_back(25)
+    x_pos = sprite.get_x()
+    y_pos = sprite.get_y()
+    teleport(x_pos, y_pos)
+    
+#Turn right function
+def turn_right():
+    sprite.turn_right(70)
 
-    def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((50,50))
-        self.image = player_img
-        self.rect = self.image.get_rect()
+#Turn left function
+def turn_left():
+    sprite.turn_left(70)
+    
+stage.event_key("up", move_forward)
+stage.event_key("down", move_back)
+stage.event_key("right", turn_right)
+stage.event_key("left", turn_left)
 
-all_sprites = pygame.sprite.Group()
-player = Player()
-all_sprites.add(player)
+def shoot():
+    x_ship = sprite.get_x()
+    y_ship = sprite.get_y()
+    dir_ship = sprite.get_direction()
+    laser = codesters.Sprite("pitchfork2", x_ship, y_ship)
+    laser.set_speed(10)
+    laser.rotate_about(dir_ship, x_ship, y_ship)
+    laser.move_forward(1000)
+    
+stage.event_key("space", shoot)
 
-# Run until the user asks to quit
-running = True
-while running:
-    all_sprites.update()
+#List of random asteroid spawn
+respawn_list = [-270, 270]
 
-    # Did the user click the window close button?
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+def asteroid_collision(sprite, hit_sprite):
+    global lives, earth_lives, score
+    name = hit_sprite.get_image_name()
+    if name == "spaceship":
+        stage.remove_sprite(sprite)
+        lives -= 1
+        my_lives_board.update(lives)
+        if lives == 0:
+            text = codesters.Text("You Lose!!!", 0, 0, "red").set_size(4)
+            stage.remove_all_events()
+    if name == "earth":
+        stage.remove_sprite(sprite)
+        earth_lives -=1
+        earth_lives_board.update(earth_lives)
+        if earth_lives == 0:
+            text = codesters.Text("You Lose!!!", 0, 0, "red").set_size(4)
+            stage.remove_all_events()
+    if name == "pitchfork2":
+        sprite.set_size(sprite.get_size()-1)
+        if sprite.get_size() < 0.1:
+            stage.remove_sprite(sprite)
+            score+=1
+            score_board.update(score)
+            if score == 10:
+                text = codesters.Text("You win!!", 0, 0, "blue").set_size(6)
+                stage.remove_all_events()
+                
+def asteroids_respawn():
+    asteroid = codesters.Sprite("asteroid", random.choice(respawn_list), random.choice(respawn_list))
+    asteroid.event_collision(asteroid_collision)
+    asteroid.set_speed(1)
+    asteroid.set_size(0.9)
+    asteroid.glide_to(earth.get_x(), earth.get_y())
+stage.event_interval(asteroids_respawn, 3)
 
-    key_pressed = pygame.key.get_pressed()
 
-    #Cicle move
-    if key_pressed[pygame.K_d]:
-        x += 1
-    if key_pressed[pygame.K_a]:
-        x -= 1
-    if key_pressed[pygame.K_w]:
-        y -= 1
-    if key_pressed[pygame.K_s]:
-        y += 1
 
-    #Player move
-    if key_pressed[pygame.K_d]:
-        player.rect.x += 1
-    if key_pressed[pygame.K_a]:
-        player.rect.x -= 1
-    if key_pressed[pygame.K_w]:
-        player.rect.y -= 1
-    if key_pressed[pygame.K_s]:
-        player.rect.y += 1
 
-    # Limits of move
-    if x > 480:
-        x = 480
-    if x < 20:
-        x = 20
-    if y > 480:
-        y = 480
-    if y < 20:
-        y = 20
-
-    # Fill the background with white
-    screen.fill((255, 255, 255))
-
-    # Add text to screen
-    score_b = font.render("Score " + str(score), True, (0, 0, 255))
-    screen.blit(score_b, [0, 0])
-    live_b = font.render("Live " + str(lives), True, (255, 0, 0))
-    screen.blit(live_b, [0, 40])
-
-    # Draw a solid blue circle in the center
-    pygame.draw.circle(screen, (0, 0, 255), (x, y), 75)
-
-    # Draw the player on screen
-    all_sprites.draw(screen)
-
-    # Flip the display
-    pygame.display.flip()
-
-# Done! Time to quit.
-pygame.quit()
